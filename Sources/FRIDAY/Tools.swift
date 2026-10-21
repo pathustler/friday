@@ -452,6 +452,23 @@ enum Tools {
             }
             return ToolResult(text: "Rendered the visual to the user (\(150 - budget) components). Add at most one short sentence.", note: "Visual answer", widget: .ui(node))
         },
+        Tool(name: "evolve",
+             description: "Teach F.R.I.D.A.Y a new ability by drafting a change to its own code on a new git branch (usually 5-15 minutes, in the background). Use it when the user wants something none of your tools can do, typically an integration with a service or API (GitHub, Linear, Spotify...) or a new kind of visual. ALWAYS first tell the user plainly what you can't do yet, what you would add, and the time it takes, and ask permission. Call this only after they say yes; they also get a native confirmation. The draft is NOT installed: they review it on a card and click Install. Never pretend you have a capability you lack.",
+             properties: ["capability": ["type": "string", "description": "What to add, specific: the service, the questions it should answer, the visuals it should show"],
+                          "details": ["type": "string", "description": "Anything the user said that matters (repo names, preferences)"],
+                          "estimate_minutes": ["type": "integer", "description": "Honest estimate, 5-15"]],
+             required: ["capability"]) { args in
+            let cap = (args["capability"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard cap.count >= 8 else { return ToolResult(text: "Describe the capability in more detail.") }
+            let id = EvolutionInbox.submit(capability: cap, details: args["details"] as? String ?? "", minutes: (args["estimate_minutes"] as? Int) ?? 10)
+            return ToolResult(text: "Asked the user for approval to draft this on a branch. Tell them it runs in the background, that a progress card is on screen, and that nothing is installed until they review and click Install.",
+                              note: "Upgrade: \(cap)", widget: .evolution(id))
+        },
+        Tool(name: "evolution_status",
+             description: "Status of F.R.I.D.A.Y's self-upgrades: what is drafting, ready for review, installed on trial, or permanent.",
+             properties: [:], required: []) { _ in
+            ToolResult(text: Evolution.statusText())
+        },
         Tool(name: "list_running_apps",
              description: "List the user-facing applications currently open on the Mac.",
              properties: [:], required: []) { _ in
@@ -522,6 +539,12 @@ enum Tools {
     @MainActor
     static func call(_ name: String, _ args: [String: Any]) async -> ToolResult {
         guard let tool = all.first(where: { $0.name == name }) else { return ToolResult(text: "Unknown tool \(name)") }
-        return await tool.run(args)
+        let result = await tool.run(args)
+        // successful use of a learned tool counts toward "regular use" (see Evolution.checkTrials)
+        if AbilityRegistry.tools.contains(where: { $0.name == name }) {
+            let failed = ["Couldn't", "Could not", "Error", "Failed", "Invalid"].contains { result.text.hasPrefix($0) }
+            EvolutionInbox.noteToolUse(name, ok: !failed)
+        }
+        return result
     }
 }

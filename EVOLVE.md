@@ -12,7 +12,7 @@ it cannot do yet, and approved you extending it. Your job: **add that ability, a
    explain it in `notes`. Never touch `Package.swift`, `build.sh`, `main.swift`, `Evolution.swift`, `Voice.swift`, `Whisper.swift`.
 3. **No new dependencies.** No SwiftPM packages. Use `URLSession` + `JSONSerialization` / `Codable`.
 4. macOS 14 APIs only. Swift 5 language mode. Match the surrounding style (comment density, naming).
-5. Stay inside this working directory. No `sudo`, no installing software, no editing dotfiles, no git, no deleting user data.
+5. You are in a **git worktree on a feature branch**. Do not run git yourself (the orchestrator commits your work). Stay inside this working directory. No `sudo`, no installing software, no editing dotfiles, no git, no deleting user data.
    Do not launch the GUI app. Do not run `build.sh install`.
 6. **Never hard-code secrets.** Prefer public, unauthenticated endpoints. If a token is required (or lifts a rate limit for private data),
    call `Secrets.ask("GITHUB_TOKEN", why: "…")` at the moment it is needed (it shows a native hidden-input dialog and stores the answer

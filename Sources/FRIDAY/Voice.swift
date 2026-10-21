@@ -536,6 +536,12 @@ final class VoiceController {
         model.voiceState = .off
     }
 
+    /// Speak a one-off message (upgrade ready, etc.) if voice is on.
+    func announce(_ text: String) {
+        guard phase != .off, !tts.isSpeaking else { return }
+        tts.speak(SpeakText.clean(text))
+    }
+
     // MARK: conversation
 
     /// AI mode opened by keyboard (or any other way): start listening right away, no wake word needed.

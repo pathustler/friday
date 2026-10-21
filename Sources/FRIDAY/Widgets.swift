@@ -12,6 +12,7 @@ enum Widget: Codable, Hashable {
     case knowledge(KnowledgeCard)
     case system(SystemCard)
     case disk(DiskCard)
+    case evolution(String)    // live card for a self-upgrade (id)
     case ui(UINode)           // AI-described layout rendered with the app's own components
 }
 
@@ -281,6 +282,7 @@ struct WidgetView: View {
         case .system: return 262
         case .disk: return 330
         case .ui: return 300
+        case .evolution: return 300
         }
     }
 
@@ -293,6 +295,7 @@ struct WidgetView: View {
         case .system(let c): SystemCardView(card: c, compact: compact)
         case .disk(let c): DiskCardView(card: c, compact: compact)
         case .ui(let n): GenUIView(node: n)
+        case .evolution(let id): EvolutionCardView(id: id)
         }
     }
 }

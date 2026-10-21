@@ -74,6 +74,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.model.enterAI()
         }
         voice.start()
+
+        // self-evolution: requests from the AI (or its --mcp helper), announcements, and "regular use" checks
+        DistributedNotificationCenter.default().addObserver(forName: EvolutionInbox.name, object: nil, queue: .main) { n in
+            let id = n.userInfo?["id"] as? String ?? ""
+            MainActor.assumeIsolated { Evolution.shared.handleRequest(id: id) }
+        }
+        Evolution.shared.announce = { [weak self] text, id in
+            guard let self else { return }
+            if !self.panel.isVisible { self.show() }
+            self.model.enterAI()
+            self.model.appendAssistant(text, upgradeCard: id)
+            self.voice.announce(text)
+        }
+        Evolution.shared.afterLaunch()
+        Timer.scheduledTimer(withTimeInterval: 600, repeats: true) { _ in MainActor.assumeIsolated { Evolution.shared.checkTrials() } }
         Task { await model.index.refresh() }
     }
 

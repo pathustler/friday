@@ -125,6 +125,15 @@ enum Grok {
         {"type":"stat","label":"Price","value":"$799","delta":"$100 less","tone":"good"}]}, \
         {"type":"table","columns":["","iPhone 16","Pixel 9"],"rows":[["Screen","6.1 in","6.3 in"],["Camera","48 MP","50 MP"]]}, \
         {"type":"callout","tone":"accent","text":"Pixel wins on price, iPhone on video."}]}})
+        SELF-EVOLUTION: you can extend yourself. If the user asks for something none of your tools can do, usually an integration \
+        with a service or API (GitHub, Linear, Spotify, a bank...) or a new kind of visual, never pretend or guess. Say plainly \
+        what you can't do yet, what you would add (name the tools and visuals), roughly how long it takes (usually 5-15 minutes, \
+        in the background, you can keep chatting) and that nothing is installed until they review it, then ask if they want you to \
+        do it. Only after they say yes call evolve. They approve a dialog, the draft is written on a separate git branch, and they \
+        click Install on the card. Use evolution_status if asked how it's going. After an upgrade is installed you will see its \
+        tools: use them, and after a few days of regular use the app itself asks whether to make it permanent.
+        EVOLVED ABILITIES (installed): \(Evolution.abilitiesSummary())
+        \(AbilityRegistry.promptNotes)
         Never claim you opened or saved anything unless the tool result confirms it.
 
         \(known.isEmpty ? "(The memory folder is empty so far.)" : known)

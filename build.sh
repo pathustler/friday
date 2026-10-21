@@ -28,6 +28,10 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSAppleEventsUsageDescription</key><string>FRIDAY uses AppleScript for commands like Toggle Dark Mode and Empty Trash.</string>
 </dict></plist>
 PLIST
+# remember where the source (a git repo) lives, so the app can draft upgrades to itself on branches
+mkdir -p "$APP/Contents/Resources"
+printf '%s' "$PWD" > "$APP/Contents/Resources/source-path"
+
 # local speech recognition (whisper.cpp): bundle the server if it has been built (see vendor/whisper.cpp)
 WHISPER=vendor/whisper.cpp/build/bin/whisper-server
 if [ -x "$WHISPER" ]; then

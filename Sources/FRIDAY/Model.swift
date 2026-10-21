@@ -144,6 +144,14 @@ final class SearchModel: ObservableObject {
     }
 
     /// A message that was spoken: the reply is then generated for (and read out in) a conversational style.
+    /// A message from F.R.I.D.A.Y itself (not a reply to the user), optionally with an upgrade card.
+    func appendAssistant(_ text: String, upgradeCard id: String?) {
+        var m = ChatMessage(role: "assistant", text: text)
+        if let id { m.notes = [ChatNote(text: "Upgrade", widget: .evolution(id))] }
+        chat.append(m)
+        persistChat()
+    }
+
     func submitVoice(_ text: String) {
         aiInput = text
         voiceTurn = true
