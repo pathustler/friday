@@ -1,6 +1,6 @@
 .build/
-FRIDAY.app/
-vendor/
+FRIDAY.app
+vendor
 .DS_Store
 evolution-result.json
 *.o
