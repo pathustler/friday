@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>CFBundleIdentifier</key><string>com.friday.app</string>
+  <key>CFBundleName</key><string>F.R.I.D.A.Y</string>
+  <key>CFBundleDisplayName</key><string>F.R.I.D.A.Y</string>
+  <key>CFBundleExecutable</key><string>FRIDAY</string>
+  <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
+  <key>CFBundleVersion</key><string>1</string>
+  <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>LSUIElement</key><true/>
+  <key>NSHighResolutionCapable</key><true/>
+  <key>NSMicrophoneUsageDescription</key><string>F.R.I.D.A.Y listens for the wake word “Friday” and your voice requests. Speech is processed on this Mac.</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>F.R.I.D.A.Y turns your speech into text on this Mac so you can talk to it.</string>
+  <key>NSContactsUsageDescription</key><string>F.R.I.D.A.Y shows people from your Contacts in search and in chat, and the AI can look them up for you.</string>
+  <key>NSAppleEventsUsageDescription</key><string>FRIDAY uses AppleScript for commands like Toggle Dark Mode and Empty Trash.</string>
+</dict></plist>
