@@ -95,6 +95,7 @@ final class AudioListener {
     private var duration = 0.0
     private var wakeFired = false
     private var wakeSkip = 0
+    private var loudSeconds = 0.0          // how much of this utterance was actually loud (speech, not room noise)
     private var ring: [AVAudioPCMBuffer] = []
     private var ringSeconds = 0.0
     private var lastLevel = Date.distantPast
@@ -236,6 +237,7 @@ final class AudioListener {
             samples += s16
             duration += dur
             silence = loud ? 0 : silence + dur
+            if loud { loudSeconds += dur }
             let endAfter = (mode == .query || wakeFired) ? 1.0 : 0.8
             let stalled = !lastText.isEmpty && Date().timeIntervalSince(lastTextChange) > 1.4   // words stopped coming in
             if silence >= endAfter || stalled || duration > 30 { endUtterance() }
@@ -255,7 +257,12 @@ final class AudioListener {
         let woke = wakeFired, skip = wakeSkip, modeNow = mode
         // in wake mode only bother Whisper if the utterance already woke us, or it sounds like it began with "Friday"
         let worth = woke || modeNow == .query || WakeWord.soundsLikeWake(lastText)
-        guard whisper, worth, !audio.isEmpty else { return }
+        let enoughSpeech = loudSeconds >= 0.3
+        guard whisper, worth, enoughSpeech, !audio.isEmpty else {
+            // nothing worth transcribing: if we were waiting for the user, say so, so the UI doesn't sit on "Thinking…"
+            if woke || modeNow == .query { DispatchQueue.main.async { self.onFinal?("") } }
+            return
+        }
         let seconds = Double(audio.count) / 16000
         Task {
             let text = WhisperFilter.clean(await WhisperServer.shared.transcribe(audio), seconds: seconds)
@@ -299,6 +306,7 @@ final class AudioListener {
         duration = 0
         wakeFired = false
         wakeSkip = 0
+        loudSeconds = 0
         loudFrames = 0
         lastText = ""
         lastTextChange = Date()

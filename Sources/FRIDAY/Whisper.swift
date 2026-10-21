@@ -75,7 +75,7 @@ final class WhisperServer {
         field("temperature", "0.0")
         field("temperature_inc", "0.0")
         field("response_format", "text")
-        field("prompt", "Hey Friday. Friday, what's the weather in Sydney? Open Safari. Who is Ada Lovelace?")   // spelling hints
+        // no initial prompt on purpose: Whisper parrots prompt text back as "speech" when the audio is quiet
         body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"speech.wav\"\r\nContent-Type: audio/wav\r\n\r\n".data(using: .utf8)!)
         body.append(Self.wav(samples))
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
@@ -101,6 +101,7 @@ final class WhisperServer {
 }
 
 enum WhisperFilter {
+    private static let lone: Set<String> = ["you", "the", "a", "i", "and", "so", "uh", "um", "hmm", "oh"]
     private static let junk: Set<String> = ["you", "thank you", "thanks", "thanks for watching", "thank you for watching", "bye", "bye bye",
                                             "so", "okay", "oh", "uh", "um", "hmm", "the", "i", "a", "and"]
 
@@ -111,6 +112,7 @@ enum WhisperFilter {
         t = t.replacingOccurrences(of: #"\s{2,}"#, with: " ", options: .regularExpression).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return nil }
         let plain = t.lowercased().filter { $0.isLetter || $0 == " " }.trimmingCharacters(in: .whitespaces)
+        if lone.contains(plain) { return nil }                       // a lone "you" is never a real request
         if seconds < 1.6, junk.contains(plain) { return nil }
         return t
     }

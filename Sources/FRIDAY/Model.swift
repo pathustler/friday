@@ -195,13 +195,26 @@ final class SearchModel: ObservableObject {
         persistChat()
     }
 
+    /// A "card" is any visual answer (map, weather, contact, generated UI...). Upgrade cards are tracked separately.
+    private func isCard(_ n: ChatNote) -> Bool {
+        if case .evolution? = n.widget { return false }
+        return n.map != nil || n.widget != nil || !n.contacts.isEmpty
+    }
+
+    private func isComposed(_ n: ChatNote) -> Bool {
+        if case .ui? = n.widget { return true }
+        return false
+    }
+
+    /// One card per answer. Tool calls made while thinking each produce a card; only the final one should stay:
+    /// a composed answer (render_ui) beats raw tool cards, a route beats plain places, otherwise the newest card wins.
     private func addNote(_ id: UUID, _ note: ChatNote) {
         guard let i = chat.firstIndex(where: { $0.id == id }), !chat[i].notes.contains(note) else { return }
-        if let new = note.map {
-            // at most one map card per reply: a route wins over plain places, otherwise the latest wins
-            let existingRoute = chat[i].notes.contains { $0.map?.route != nil }
-            if existingRoute && new.route == nil { return }
-            chat[i].notes.removeAll { $0.map != nil }
+        if isCard(note) {
+            let existing = chat[i].notes.filter(isCard)
+            if existing.contains(where: isComposed), !isComposed(note) { return }                  // keep the composed answer
+            if existing.contains(where: { $0.map?.route != nil }), note.map != nil, note.map?.route == nil { return }
+            chat[i].notes.removeAll(where: isCard)                                                // newest card replaces the older ones
         }
         chat[i].notes.append(note)
     }
