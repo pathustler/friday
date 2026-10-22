@@ -126,17 +126,22 @@ final class AudioListener {
                 "On-device speech recognition isn't available. Add the language under System Settings → Keyboard → Dictation."])
         }
         recognizer = r
-        try startEngine()
+        do { try startEngine() } catch { q.asyncAfter(deadline: .now() + 1) { self.restartEngine(attempt: 1) } }
         observer = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil) { [weak self] _ in
-            self?.q.async { try? self?.restartEngine() }     // headphones plugged in, default mic changed, ...
+            self?.q.async { self?.restartEngine() }          // headphones plugged in, default mic changed, ...
         }
     }
 
     private func startEngine() throws {
         let input = engine.inputNode
-        let format = input.outputFormat(forBus: 0)
+        // After a device change macOS can briefly report 0 Hz / 0 channels. Installing a tap then raises an Objective-C
+        // exception, which Swift cannot catch and which killed the whole app, so refuse and retry instead.
+        let hw = input.outputFormat(forBus: 0)
+        guard hw.sampleRate > 0, hw.channelCount > 0 else {
+            throw NSError(domain: "Voice", code: 2, userInfo: [NSLocalizedDescriptionKey: "The microphone isn't ready yet."])
+        }
         input.removeTap(onBus: 0)
-        input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buf, _ in
+        input.installTap(onBus: 0, bufferSize: 2048, format: nil) { [weak self] buf, _ in      // nil = whatever the device delivers
             guard let self, let copy = buf.clone() else { return }
             self.q.async { self.process(copy) }
         }
@@ -144,9 +149,13 @@ final class AudioListener {
         try engine.start()
     }
 
-    private func restartEngine() throws {
+    /// Restart after a device change, retrying for up to ~20 s while the new device settles.
+    private func restartEngine(attempt: Int = 0) {
         engine.stop()
-        try startEngine()
+        do { try startEngine() } catch {
+            guard attempt < 20 else { return }
+            q.asyncAfter(deadline: .now() + 1) { self.restartEngine(attempt: attempt + 1) }
+        }
     }
 
     func stop() {

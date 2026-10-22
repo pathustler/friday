@@ -41,6 +41,7 @@ fi
 codesign --force --deep --sign - "$APP"
 echo "Built $APP"
 if [ "${1:-}" = "install" ]; then
+  launchctl bootout "gui/$(id -u)/com.friday.app.agent" 2>/dev/null || true
   pkill -x FRIDAY 2>/dev/null || true
   rm -rf /Applications/$APP
   cp -R "$APP" /Applications/

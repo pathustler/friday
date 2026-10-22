@@ -46,6 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ n: Notification) {
+        if !Autostart.claimSingleInstance() { exit(0) }            // another F.R.I.D.A.Y already owns the hotkey and mic
+        Autostart.ensureInstalled()                                // start at login + restart after a crash (can be turned off in the menu)
+        if Autostart.handOverIfNeeded() { exit(0) }                // launchd now runs (and supervises) the real copy
         panel = Panel(contentRect: NSRect(x: 0, y: 0, width: Metrics.width, height: Metrics.height(rows: 0)),
                       styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.level = .popUpMenu
@@ -135,15 +138,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: Hotkey + menu bar
 
+    /// macOS Spotlight's own ⌘Space shortcut (symbolic hotkey 64). Enabled unless the user turned it off.
+    private var spotlightOwnsCommandSpace: Bool {
+        guard let all = UserDefaults(suiteName: "com.apple.symbolichotkeys")?.dictionary(forKey: "AppleSymbolicHotKeys"),
+              let entry = all["64"] as? [String: Any] else { return true }
+        if let b = entry["enabled"] as? Bool { return b }
+        return (entry["enabled"] as? Int ?? 1) != 0
+    }
+
+    private var hotkeyProblem: String?
+
     private func applyHotkey() {
-        let cmd = (UserDefaults.standard.string(forKey: hotkeyDefault) ?? "command") == "command"
-        hotKey.register(keyCode: UInt32(kVK_Space), modifiers: UInt32(cmd ? cmdKey : optionKey))
+        hotkeyProblem = nil
+        let wantsCommand = (UserDefaults.standard.string(forKey: hotkeyDefault) ?? "command") == "command"
+        if wantsCommand {
+            if hotKey.register(keyCode: UInt32(kVK_Space), modifiers: UInt32(cmdKey)) {
+                if spotlightOwnsCommandSpace { hotkeyProblem = "Spotlight still uses ⌘Space. Turn it off in System Settings → Keyboard → Keyboard Shortcuts → Spotlight." }
+            } else {
+                hotKey.register(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))        // ⌘Space is taken: use ⌥Space
+                hotkeyProblem = "⌘Space is taken by another app, so F.R.I.D.A.Y is using ⌥Space."
+            }
+        } else {
+            hotKey.register(keyCode: UInt32(kVK_Space), modifiers: UInt32(optionKey))
+        }
     }
 
     private func setupStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         statusItem.button?.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "FRIDAY")
         let menu = NSMenu()
+        let warn = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        warn.representedObject = "hotkeywarn"
+        warn.isHidden = true
+        menu.addItem(warn)
         menu.addItem(withTitle: "Show F.R.I.D.A.Y", action: #selector(showFromMenu), keyEquivalent: "").target = self
 
         let hk = NSMenuItem(title: "Hotkey", action: nil, keyEquivalent: "")
@@ -174,7 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         voiceItem.representedObject = "voice"
         menu.addItem(voiceItem)
 
-        let login = NSMenuItem(title: "Launch at Login", action: #selector(toggleLogin(_:)), keyEquivalent: "")
+        let login = NSMenuItem(title: "Start at Login & Keep Running", action: #selector(toggleLogin(_:)), keyEquivalent: "")
         login.target = self
         menu.addItem(login)
         menu.addItem(.separator())
@@ -217,15 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggleLogin(_ item: NSMenuItem) {
-        do {
-            if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
-            else { try SMAppService.mainApp.register() }
-        } catch {
-            let a = NSAlert()
-            a.messageText = "Couldn't change login item"
-            a.informativeText = "\(error.localizedDescription)\n\nMove FRIDAY.app to /Applications and try again."
-            a.runModal()
-        }
+        if Autostart.enabled { Autostart.disable() } else { Autostart.enable() }
     }
 }
 
@@ -233,12 +252,16 @@ extension AppDelegate: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         let current = UserDefaults.standard.string(forKey: hotkeyDefault) ?? "command"
         for item in menu.items {
+            if item.representedObject as? String == "hotkeywarn" {
+                item.title = "⚠︎ " + (hotkeyProblem ?? "")
+                item.isHidden = hotkeyProblem == nil
+            }
             if item.representedObject as? String == "voice" {
                 item.state = VoiceController.enabled && model.voiceState != .off ? .on : .off
                 item.title = model.voiceError.map { "Voice unavailable: \($0)" }
                     ?? "Voice: say “Friday”" + (model.voiceEngine.isEmpty ? "" : " — \(model.voiceEngine)")
             }
-            if item.action == #selector(toggleLogin(_:)) { item.state = SMAppService.mainApp.status == .enabled ? .on : .off }
+            if item.action == #selector(toggleLogin(_:)) { item.state = Autostart.enabled ? .on : .off }
             if let sub = item.submenu {
                 let engine = Engine.useClaude ? "engine:claude" : "engine:openrouter"
                 for s in sub.items {
